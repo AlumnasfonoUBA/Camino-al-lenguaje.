@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Camino al Lenguaje — Cápsula interactiva</title>
+<style>
+  :root{
+    --bg:#dff3ff;
+    --card:#ffffff;
+    --accent1:#ffd6e0;
+    --accent2:#c8f7d6;
+    --accent3:#fff3bf;
+    --accent4:#cfe8ff;
+    --text:#223;
+    --token-bg:#ffdfba;
+    --success-color:#2b6f4a;
+    --fail-color:#8b1e3f;
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  body{background:linear-gradient(180deg,var(--bg),#f8ffff);color:var(--text);display:flex;align-items:flex-start;justify-content:center;padding:24px;}
+  .container{max-width:1100px;width:100%;}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  h1{margin:0;font-size:20px;letter-spacing:0.2px}
+  .board-wrap{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start;}
+  .board-card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(20,40,60,0.06);}
+  .board-title{font-weight:600;margin-bottom:10px}
+  .grid-board{width:100%;height:380px;padding:10px;box-sizing:border-box;background:linear-gradient(90deg, rgba(255,255,255,0.5), rgba(255,255,255,0.7)); border-radius:10px;position:relative;overflow:hidden;}
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:1fr;gap:10px;height:100%;}
+  .cell{border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;padding:6px;position:relative;min-height:48px;box-shadow:0 2px 6px rgba(10,10,20,0.04);}
+  .c1{background:var(--accent1)}
+  .c2{background:var(--accent2)}
+  .c3{background:var(--accent3)}
+  .c4{background:var(--accent4)}
+  .token{width:42px;height:42px;border-radius:999px;display:flex;align-items:center;justify-content:center;position:absolute;transform:translate(-50%,-50%);transition:all 450ms cubic-bezier(.2,.9,.2,1);box-shadow:0 8px 18px rgba(30,40,60,0.12);font-size:20px;background:var(--token-bg);border:2px solid rgba(0,0,0,0.06)}
+  .cell-index{position:absolute;right:6px;bottom:6px;font-size:11px;color:rgba(0,0,0,0.45);opacity:0;transition:opacity .3s;}
+  .panel{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(20,40,60,0.06);height:380px;display:flex;flex-direction:column;justify-content:space-between}
+  .question-area{flex:1}
+  .meta{font-size:13px;color:rgba(0,0,0,0.55);margin-bottom:8px}
+  .question{font-weight:700;margin-bottom:12px}
+  .options{display:grid;gap:8px}
+  .btn{background:#fff;border:1px solid rgba(0,0,0,0.08);padding:10px;border-radius:8px;cursor:pointer;text-align:left;font-weight:600}
+  .btn:hover{background:#fbfdff}
+  .message{height:20px;margin-top:8px;font-size:13px}
+  .footer{margin-top:14px;font-size:13px;color:rgba(0,0,0,0.56)}
+  .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,20,30,0.35);backdrop-filter:blur(3px);z-index:1000}
+  .final-card{background:var(--card);padding:28px;border-radius:12px;box-shadow:0 20px 60px rgba(10,20,40,0.25);text-align:center;max-width:520px}
+  .final-card h2{margin:0 0 8px;font-size:22px}
+  .final-card p{margin:0 0 18px;color:rgba(0,0,0,0.7)}
+  .btn-primary{background:#4f46e5;color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:700}
+  .btn-ghost{background:transparent;border:1px solid rgba(0,0,0,0.08);padding:8px 12px;border-radius:8px;cursor:pointer}
+  @media (max-width:940px){ .board-wrap{grid-template-columns:1fr} .panel{height:auto} .grid-board{height:360px}}
+</style>
+</head>
+<body>
+  <div class="container" role="main">
+    <header>
+      <h1>Camino al Lenguaje</h1>
+      <div class="small">Casilla: <span id="posLabel">1</span> / 30</div>
+    </header>
+
+    <div class="board-wrap">
+      <div class="board-card">
+        <div class="board-title">Tablero</div>
+        <div class="grid-board" id="gridBoard">
+          <div class="grid" id="grid"></div>
+          <div id="token" class="token"></div>
+        </div>
+        <div class="footer">Avanzá acertando; si fallás podés reintentar tantas veces como quieras.</div>
+      </div>
+
+      <aside class="panel">
+        <div class="question-area">
+          <div class="meta">Modo: Pregunta única → 1 respuesta correcta avanza automáticamente</div>
+          <div class="question" id="questionText">Cargando pregunta...</div>
+          <div class="small" id="categoryLabel"></div>
+          <div class="options" id="options"></div>
+          <div class="message" id="message"></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="small">Preguntas respondidas: <span id="answeredCount">0</span> / 29</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button id="resetBtn" class="btn-ghost">Reiniciar</button>
+            <button id="clearStorageBtn" class="btn-ghost">Borrar progreso</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div id="finalOverlay" class="overlay" style="display:none">
+    <div class="final-card">
+      <h2>¡COMPLETASTE EL CAMINO AL LENGUAJE! 🎉</h2>
+      <p id="finalSummary"></p>
+      <p id="firstTrySummary"></p>
+      <div style="display:flex;justify-content:center;gap:10px;margin-top:12px">
+        <button id="playAgain" class="btn-primary">Volver a jugar</button>
+        <button id="closeOverlay" class="btn-ghost">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const TOTAL_SQUARES = 30;
+const QUESTIONS_COUNT = 29;
+const SOUND_SUCCESS = 'https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg';
+const SOUND_FAIL = 'https://actions.google.com/sounds/v1/alarms/beep_short.ogg';
+const audioSuccess = new Audio(SOUND_SUCCESS);
+const audioFail = new Audio(SOUND_FAIL);
+
+const RAW_QUESTIONS = [
+  { text:'¿A qué edad es esperable que aparezca contacto visual sostenido?',correct:'12 meses',category:'Contacto social'},
+  { text:'¿A qué edad suele comenzar el juego simbólico (usar un objeto como otro)?',correct:'18 meses',category:'Juego simbólico'},
+  { text:'¿A qué edad desarrolla juegos de roles como “jugar a la mamá o al papá”?',correct:'3 años',category:'Juego simbólico'},
+  { text:'¿A qué edad formula frases que contengan cuatro o más palabras?',correct:'3 años',category:'Producción'},
+  { text:'¿A qué edad utiliza pronombres personales y también nexos como “y”, “que”, “o”?',correct:'3 años',category:'Gramática'},
+  { text:'¿A qué edad presenta un habla acorde a su edad, con omisiones esperables en ciertas letras como /ɾ/, /r/ y grupos consonánticos?',correct:'3 años',category:'Fonología'},
+  { text:'¿A qué edad puede estructurar correctamente una oración simple utilizando tiempos verbales adecuados?',correct:'5 años',category:'Sintaxis'},
+  { text:'¿A qué edad presenta la adquisición completa de todos los sonidos del habla del castellano rioplatense?',correct:'5 años',category:'Fonología'},
+  { text:'¿A qué edad accede al uso de oraciones condicionales o de la voz pasiva?',correct:'5 años',category:'Sintaxis'},
+  { text:'¿A qué edad puede narrar hechos con secuencia lógica?',correct:'5 años',category:'Narración'},
+  { text:'¿A qué edad comprende consignas de dos o más pasos?',correct:'3 años',category:'Comprensión'},
+  { text:'¿A qué edad identifica rimas y sílabas?',correct:'3 años',category:'Conciencia fonológica'},
+  { text:'¿A qué edad puede contar historias y hacer inferencias?',correct:'5 años',category:'Narración'},
+  { text:'¿A qué edad expresa emociones verbalmente?',correct:'5 años',category:'Pragmática'},
+  { text:'¿A qué edad comprende y usa preposiciones básicas?',correct:'3 años',category:'Gramática'},
+  { text:'¿A qué edad describe objetos o personas conocidas?',correct:'5 años',category:'Descripción'},
+  { text:'¿A qué edad puede ajustarse a las rutinas escolares, en el transcurso del año?',correct:'3 años',category:'Rutinas'},
+  { text:'¿A qué edad imita acciones simples como aplaudir?',correct:'12 meses',category:'Imitación'},
+  { text:'¿A qué edad realiza gestos para conseguir algo (protoimperativos)?',correct:'12 meses',category:'Gestos'},
+  { text:'¿A qué edad realiza gestos para compartir experiencias (protodeclarativos)?',correct:'12 meses',category:'Gestos'},
+  { text:'¿A qué edad responde a su nombre?',correct:'12 meses',category:'Atención'},
+  { text:'¿A qué edad se ajusta a turnos en interacciones?',correct:'3 años',category:'Pragmática'},
+  { text:'¿A qué edad muestra interés por juegos compartidos?',correct:'18 meses',category:'Interacción'},
+  { text:'¿A qué edad sigue una consigna de un paso sin apoyo visual?',correct:'3 años',category:'Comprensión'},
+  { text:'¿A qué edad puede deletrear palabras de tres fonemas?',correct:'5 años',category:'Lectoescritura'},
+  { text:'¿A qué edad identifica sonidos iniciales de palabras?',correct:'5 años',category:'Conciencia fonológica'},
+  { text:'¿A qué edad usa la mano del adulto como herramienta para alcanzar algo?',correct:'3 años',category:'Resolución de problemas'},
+  { text:'¿A qué edad comprende símbolos y sonidos?',correct:'5 años',category:'escritura'},
+  { text:'¿A qué edad puede repetir series de palabras o frases?',correct:'5 años',category:'Memoria'}
+];
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function buildQuestions(){
+  const base=shuffle([...RAW_QUESTIONS]).slice(0,QUESTIONS_COUNT);
+  const ages=['12 meses','18 meses','3 años','5 años'];
+  return base.map(q=>{
+    const opts=shuffle([q.correct,...shuffle(ages.filter(a=>a!==q.correct)).slice(0,2)]);
+    return {...q,options:opts};
+  });
+}
+
+let state={pos:1,qIndex:0,questions:[],answeredCount:0,firstTryCount:0,currentAttempts:0};
+
+const grid=document.getElementById('grid');
+const token=document.getElementById('token');
+const posLabel=document.getElementById('posLabel');
+const questionText=document.getElementById('questionText');
+const categoryLabel=document.getElementById('categoryLabel');
+const optionsEl=document.getElementById('options');
+const messageEl=document.getElementById('message');
+const answeredCountEl=document.getElementById('answeredCount');
+const finalOverlay=document.getElementById('finalOverlay');
+const finalSummary=document.getElementById('finalSummary');
+const firstTrySummary=document.getElementById('firstTrySummary');
+
+function createBoard(){
+  grid.innerHTML='';
+  let num=1;
+  for(let r=0;r<5;r++){
+    let row=[];
+    for(let c=0;c<6;c++) row.push(num++);
+    if(r%2!==0) row.reverse();
+    row.forEach(n=>{
+      const cell=document.createElement('div');
+      cell.className='cell '+['c1','c2','c3','c4'][(n-1)%4];
+      cell.id='cell-'+n;
+      cell.innerHTML='<div class="cell-index">'+n+'</div>';
+      grid.appendChild(cell);
+    });
+  }
+}
+
+function placeToken(pos){
+  const cell=document.getElementById('cell-'+pos);
+  const rect=cell.getBoundingClientRect();
+  const base=document.getElementById('gridBoard').getBoundingClientRect();
+  token.style.left=(rect.left-base.left+rect.width/2)+'px';
+  token.style.top=(rect.top-base.top+rect.height/2)+'px';
+  posLabel.textContent=pos;
+}
+
+function revealCell(n){const ci=document.querySelector(`#cell-${n} .cell-index`);if(ci)ci.style.opacity=1;}
+
+function renderQuestion(){
+  const q=state.questions[state.qIndex];
+  if(!q){showFinal();return;}
+  questionText.textContent=q.text;
+  categoryLabel.textContent='Categoría: '+q.category;
+  optionsEl.innerHTML='';
+  q.options.forEach(o=>{
+    const btn=document.createElement('button');
+    btn.className='btn';
+    btn.textContent=o;
+    btn.onclick=()=>checkAnswer(o);
+    optionsEl.appendChild(btn);
+  });
+  messageEl.textContent='';
+}
+
+function checkAnswer(sel){
+  const q=state.questions[state.qIndex];
+  state.currentAttempts++;
+  if(sel===q.correct){
+    if(state.currentAttempts===1)state.firstTryCount++;
+    state.answeredCount++;
+    audioSuccess.play();
+    messageEl.style.color='var(--success-color)';
+    messageEl.textContent='¡Correcto! Avanzás...';
+    revealCell(state.pos);
+    state.pos++;
+    state.qIndex++;
+    state.currentAttempts=0;
+    setTimeout(updateUI,600);
+  }else{
+    audioFail.play();
+    messageEl.style.color='var(--fail-color)';
+    messageEl.textContent='Incorrecto. Intentá nuevamente.';
+  }
+}
+
+function updateUI(){
+  placeToken(state.pos);
+  answeredCountEl.textContent=state.answeredCount;
+  renderQuestion();
+}
+
+function showFinal(){
+  finalOverlay.style.display='flex';
+  finalSummary.textContent=`Respondiste correctamente ${state.answeredCount} preguntas.`;
+  firstTrySummary.textContent=`Aciertos en el primer intento: ${state.firstTryCount}`;
+}
+
+document.getElementById('resetBtn').onclick=()=>{state.pos=1;state.qIndex=0;state.answeredCount=0;state.firstTryCount=0;state.currentAttempts=0;createBoard();updateUI();};
+document.getElementById('clearStorageBtn').onclick=()=>{localStorage.removeItem('camino_lenguaje_v1');location.reload();};
+document.getElementById('playAgain').onclick=()=>{location.reload();};
+document.getElementById('closeOverlay').onclick=()=>{finalOverlay.style.display='none';};
+
+function init(){
+  createBoard();
+  state.questions=buildQuestions();
+  placeToken(state.pos);
+  renderQuestion();
+}
+window.onload=init;
+</script>
+</body>
+</html>
+
+
